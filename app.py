@@ -119,9 +119,9 @@ if uploaded_files:
 
             with col1:
                 st.image(
-                    overlay0,
-                    caption="0h"
-                )
+    mask0,
+    caption="0h mask"
+)
 
             with col2:
                 st.image(
