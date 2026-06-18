@@ -54,6 +54,17 @@ def make_overlay(img, mask):
 
     overlay = img.copy()
 
-    overlay[mask > 0] = [255, 0, 0]
+    red_mask = np.zeros_like(img)
+
+    red_mask[:, :, 0] = 255
+
+    alpha = 0.3
+
+    overlay[mask > 0] = (
+        (1 - alpha) * overlay[mask > 0]
+        + alpha * red_mask[mask > 0]
+    )
+
+    overlay = overlay.astype(np.uint8)
 
     return overlay
