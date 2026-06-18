@@ -115,19 +115,49 @@ if uploaded_files:
             st.write("---")
             st.subheader(sample)
 
-            col1, col2 = st.columns(2)
+        st.write("### 0h")
 
-            with col1:
-                st.image(
-    mask0,
-    caption="0h mask"
-)
+col1, col2, col3 = st.columns(3)
 
-            with col2:
-                st.image(
-                    overlay24,
-                    caption="24h"
-                )
+with col1:
+    st.image(
+        img0,
+        caption="Original"
+    )
+
+with col2:
+    st.image(
+        mask0,
+        caption="Mask"
+    )
+
+with col3:
+    st.image(
+        overlay0,
+        caption="Overlay"
+    )
+
+st.write("### 24h")
+
+col1, col2, col3 = st.columns(3)
+
+with col1:
+    st.image(
+        img24,
+        caption="Original"
+    )
+
+with col2:
+    st.image(
+        mask24,
+        caption="Mask"
+    )
+
+with col3:
+    st.image(
+        overlay24,
+        caption="Overlay"
+    )
 
     if len(results) > 0:
 
