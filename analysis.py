@@ -6,22 +6,25 @@ def get_scratch_mask(img):
 
     gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
 
-    # Gaussian blur
-    gray = cv2.GaussianBlur(gray, (15, 15), 0)
+    # 高斯模糊
+    gray = cv2.GaussianBlur(gray,(21,21),0)
 
-    # Otsu threshold
+    # Otsu阈值
     _, binary = cv2.threshold(
         gray,
         0,
         255,
-        cv2.THRESH_BINARY + cv2.THRESH_OTSU
+        cv2.THRESH_BINARY+cv2.THRESH_OTSU
     )
 
-    # scratch区域通常更亮
-    binary = 255 - binary
+    # 划痕亮，细胞暗
+    binary = 255-binary
 
-    # morphology close
-    kernel = np.ones((25, 25), np.uint8)
+    # 沿纵向做闭运算
+    kernel = cv2.getStructuringElement(
+        cv2.MORPH_RECT,
+        (51,5)
+    )
 
     binary = cv2.morphologyEx(
         binary,
@@ -29,20 +32,7 @@ def get_scratch_mask(img):
         kernel
     )
 
-    # connected components
-    num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(binary)
-
-    if num_labels <= 1:
-        return binary
-
-    # 最大连通区域（忽略背景）
-    largest = 1 + np.argmax(stats[1:, cv2.CC_STAT_AREA])
-
-    mask = np.zeros_like(binary)
-
-    mask[labels == largest] = 255
-
-    return mask
+    return binary
 
 
 def get_area(mask):
