@@ -1,56 +1,34 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import cv2
 import re
 from PIL import Image
 
-st.set_page_config(page_title="WoundAI", layout="wide")
+from analysis import (
+    get_scratch_mask,
+    get_area,
+    calculate_migration,
+    make_overlay
+)
+
+from plot import draw_barplot
+
+
+st.set_page_config(
+    page_title="WoundAI",
+    layout="wide"
+)
 
 st.title("🔬 WoundAI")
 st.subheader("Cell Migration Analyzer")
 
-
-def get_mask(img):
-
-    gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
-
-    # Otsu threshold
-    _, mask = cv2.threshold(
-        gray,
-        0,
-        255,
-        cv2.THRESH_BINARY + cv2.THRESH_OTSU
-    )
-
-    # invert
-    mask = 255 - mask
-
-    kernel = np.ones((5,5), np.uint8)
-
-    mask = cv2.morphologyEx(
-        mask,
-        cv2.MORPH_CLOSE,
-        kernel
-    )
-
-    return mask
-
-
-def area(mask):
-
-    return np.sum(mask > 0)
-
-
 uploaded_files = st.file_uploader(
-    "Upload images (0h and 24h)",
+    "Upload images",
     accept_multiple_files=True,
     type=["tif", "tiff", "png", "jpg"]
 )
 
 if uploaded_files:
-
-    st.success(f"{len(uploaded_files)} images uploaded!")
 
     pairs = {}
 
@@ -60,7 +38,12 @@ if uploaded_files:
 
         if "0h" in name.lower():
 
-            sample = re.sub(r'[-_]?0h.*', '', name, flags=re.I)
+            sample = re.sub(
+                r'[-_]?0h.*',
+                '',
+                name,
+                flags=re.I
+            )
 
             if sample not in pairs:
                 pairs[sample] = {}
@@ -69,7 +52,12 @@ if uploaded_files:
 
         elif "24h" in name.lower():
 
-            sample = re.sub(r'[-_]?24h.*', '', name, flags=re.I)
+            sample = re.sub(
+                r'[-_]?24h.*',
+                '',
+                name,
+                flags=re.I
+            )
 
             if sample not in pairs:
                 pairs[sample] = {}
@@ -83,28 +71,45 @@ if uploaded_files:
         if "0h" in imgs and "24h" in imgs:
 
             img0 = np.array(
-                Image.open(imgs["0h"]).convert("RGB")
+                Image.open(
+                    imgs["0h"]
+                ).convert("RGB")
             )
 
             img24 = np.array(
-                Image.open(imgs["24h"]).convert("RGB")
+                Image.open(
+                    imgs["24h"]
+                ).convert("RGB")
             )
 
-            mask0 = get_mask(img0)
-            mask24 = get_mask(img24)
+            mask0 = get_scratch_mask(img0)
+            mask24 = get_scratch_mask(img24)
 
-            a0 = area(mask0)
-            a24 = area(mask24)
+            area0 = get_area(mask0)
+            area24 = get_area(mask24)
 
-            migration = (a0 - a24) / a0 * 100
+            migration = calculate_migration(
+                area0,
+                area24
+            )
 
             results.append(
                 {
                     "Sample": sample,
-                    "Area_0h": a0,
-                    "Area_24h": a24,
-                    "Migration_%": round(migration, 2)
+                    "Area_0h": area0,
+                    "Area_24h": area24,
+                    "Migration_%": migration
                 }
+            )
+
+            overlay0 = make_overlay(
+                img0,
+                mask0
+            )
+
+            overlay24 = make_overlay(
+                img24,
+                mask24
             )
 
             st.write("---")
@@ -113,10 +118,16 @@ if uploaded_files:
             col1, col2 = st.columns(2)
 
             with col1:
-                st.image(mask0, caption="0h mask")
+                st.image(
+                    overlay0,
+                    caption="0h"
+                )
 
             with col2:
-                st.image(mask24, caption="24h mask")
+                st.image(
+                    overlay24,
+                    caption="24h"
+                )
 
     if len(results) > 0:
 
@@ -126,7 +137,13 @@ if uploaded_files:
 
         st.dataframe(df)
 
-        csv = df.to_csv(index=False)
+        fig = draw_barplot(df)
+
+        st.pyplot(fig)
+
+        csv = df.to_csv(
+            index=False
+        )
 
         st.download_button(
             "Download CSV",
@@ -137,4 +154,6 @@ if uploaded_files:
 
 else:
 
-    st.info("Please upload images.")
+    st.info(
+        "Please upload images."
+    )
