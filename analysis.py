@@ -6,33 +6,32 @@ def get_scratch_mask(img):
 
     gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
 
-    # 高斯模糊
-    gray = cv2.GaussianBlur(gray,(21,21),0)
+    # 平滑
+    gray = cv2.GaussianBlur(gray, (21, 21), 0)
 
-    # Otsu阈值
-    _, binary = cv2.threshold(
-        gray,
-        0,
-        255,
-        cv2.THRESH_BINARY+cv2.THRESH_OTSU
-    )
+    # 每一列平均亮度
+    profile = gray.mean(axis=0)
 
-    # 划痕亮，细胞暗
-    binary = 255-binary
+    # 找最亮位置（通常是划痕中心）
+    center = np.argmax(profile)
 
-    # 沿纵向做闭运算
-    kernel = cv2.getStructuringElement(
-        cv2.MORPH_RECT,
-        (51,5)
-    )
+    # 峰值的50%
+    threshold = profile[center] * 0.5
 
-    binary = cv2.morphologyEx(
-        binary,
-        cv2.MORPH_CLOSE,
-        kernel
-    )
+    left = center
+    while left > 0 and profile[left] > threshold:
+        left -= 1
 
-    return binary
+    right = center
+    while right < len(profile)-1 and profile[right] > threshold:
+        right += 1
+
+    mask = np.zeros_like(gray)
+
+    # 整个高度范围内标记划痕
+    mask[:, left:right] = 255
+
+    return mask
 
 
 def get_area(mask):
@@ -45,7 +44,10 @@ def calculate_migration(area0, area24):
     if area0 == 0:
         return 0
 
-    return round((area0 - area24) / area0 * 100, 2)
+    return round(
+        (area0 - area24) / area0 * 100,
+        2
+    )
 
 
 def make_overlay(img, mask):
